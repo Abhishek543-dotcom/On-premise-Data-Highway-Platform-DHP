@@ -1,4 +1,4 @@
-.PHONY: help dev up down logs build test clean
+.PHONY: help dev up down logs build test clean docs docs-serve seed
 
 PYTHON ?= python3
 
@@ -62,12 +62,24 @@ run-storage-service: ## Run Storage Service locally
 test: ## Run all tests
 	cd services/job-service && $(PYTHON) -m pytest tests/ -v
 	cd services/metadata-service && $(PYTHON) -m pytest tests/ -v
+	cd services/log-service && $(PYTHON) -m pytest tests/ -v
+	cd services/storage-service && $(PYTHON) -m pytest tests/ -v
+	cd services/orchestrator && $(PYTHON) -m pytest tests/ -v
 
 test-job-service: ## Run Job Service tests
 	cd services/job-service && $(PYTHON) -m pytest tests/ -v
 
 test-metadata-service: ## Run Metadata Service tests
 	cd services/metadata-service && $(PYTHON) -m pytest tests/ -v
+
+test-log-service: ## Run Log Service tests
+	cd services/log-service && $(PYTHON) -m pytest tests/ -v
+
+test-storage-service: ## Run Storage Service tests
+	cd services/storage-service && $(PYTHON) -m pytest tests/ -v
+
+test-orchestrator: ## Run Orchestrator tests
+	cd services/orchestrator && $(PYTHON) -m pytest tests/ -v
 
 # =============================================
 # Database
@@ -79,6 +91,13 @@ db-init: ## Initialize database schema
 db-reset: ## Reset database (drop and recreate)
 	docker exec lakehouse-postgres psql -U lakehouse -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 	docker exec -i lakehouse-postgres psql -U lakehouse -d lakehouse < scripts/init-db.sql
+
+# =============================================
+# Seed Data
+# =============================================
+
+seed: ## Seed MinIO with sample job scripts
+	bash scripts/seed-data.sh
 
 # =============================================
 # Kubernetes
@@ -99,6 +118,16 @@ k8s-delete: ## Remove from Kubernetes
 	kubectl delete -f infra/k8s/ --ignore-not-found
 
 # =============================================
+# Documentation
+# =============================================
+
+docs: ## Build documentation site
+	mkdocs build --strict
+
+docs-serve: ## Serve documentation locally
+	mkdocs serve
+
+# =============================================
 # Cleanup
 # =============================================
 
@@ -106,4 +135,4 @@ clean: down ## Clean up everything
 	cd infra && docker-compose -f docker-compose.dev.yaml down -v --remove-orphans
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
-
+	rm -rf site/ 2>/dev/null || true
